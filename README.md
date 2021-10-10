@@ -106,7 +106,7 @@ The main method used when initiating logging for a given function. Internally `s
   app: 'anApp'
 }
 ```
-
+***
 ### end()
 The main method used to end the log for a given function. Internally `end()` calls `info` and ends a timer. 
 
@@ -128,6 +128,7 @@ The main method used to end the log for a given function. Internally `end()` cal
 }
 getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 ```
+***
 ### error()
 The main method used to handle and log errors. The intention is that this method is used in conjunction with [Logger.prototype.start()](#start) in order to benchmark time-to-error. If the method is being used independently of the `start` method, you can pass the the value `false` for the optional 4th argument `timeEnd`. 
 #### Arguments
@@ -150,7 +151,7 @@ The main method used to handle and log errors. The intention is that this method
 }
 getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 ```
-
+***
 ### debug()
 #### Arguments
 * `origin: string`
@@ -169,7 +170,7 @@ getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 	app: 'anApp'
 }
 ```
-
+***
 ### info()
 #### Arguments
 * `origin: string`
@@ -188,8 +189,7 @@ getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 	app: 'anApp'
 }
 ```
-
-
+***
 ### warn()
 #### Arguments
 * `origin: string`

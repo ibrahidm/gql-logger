@@ -102,7 +102,7 @@ The main method used when initiating logging for a given function. Internally `s
   status: 200,
   ts: 1633824049556,
   type: 'info',
-  session: 'some-session-id'
+  session: 'some-session-id',
   app: 'anApp'
 }
 ```
@@ -123,7 +123,7 @@ The main method used to end the log for a given function. Internally `end()` cal
   status: 200,
   ts: 1633824049575,
   type: 'info',
-  session: 'some-session-id'
+  session: 'some-session-id',
   app: 'anApp'
 }
 getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms

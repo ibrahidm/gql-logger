@@ -42,6 +42,26 @@ export default class Logger {
     this.identifier = identifier;
   }
 
+  private output(
+    sender: string,
+    origin: string,
+    message: string,
+    status: number
+  ): Record<string, unknown> {
+    return {
+      origin,
+      message,
+      trace: this.trace,
+      status,
+      ts: Date.now(),
+      type: sender,
+      ...(this.session && { session: this.session }),
+      ...(this.userId && { userId: this.userId }),
+      ...(this.identifier && { identifier: this.identifier }),
+      ...(this.appName && { app: this.appName }),
+    };
+  }
+
   start(self: string, status?: number): void {
     this.info(self, `${self} called`, status);
     this.time(`${self} - ${this.trace}`);
@@ -54,65 +74,33 @@ export default class Logger {
 
   debug(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.DEBUG) return;
+    const self = this.debug.name;
     console.debug({
-      origin,
-      message,
-      trace: this.trace,
-      status: status || 200,
-      ts: Date.now(),
-      type: this.debug.name,
-      ...(this.session && { session: this.session }),
-      ...(this.userId && { userId: this.userId }),
-      ...(this.identifier && { identifier: this.identifier }),
-      ...(this.appName && { app: this.appName }),
+      ...this.output(self, origin, message, status || 200),
     });
   }
 
   info(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.INFO) return;
+    const self = this.info.name;
     console.info({
-      origin,
-      message,
-      trace: this.trace,
-      status: status || 200,
-      ts: Date.now(),
-      type: this.info.name,
-      ...(this.session && { session: this.session }),
-      ...(this.userId && { userId: this.userId }),
-      ...(this.identifier && { identifier: this.identifier }),
-      ...(this.appName && { app: this.appName }),
+      ...this.output(self, origin, message, status || 200),
     });
   }
 
   warn(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.WARN) return;
+    const self = this.warn.name;
     console.warn({
-      origin,
-      message,
-      trace: this.trace,
-      status: status || 200,
-      ts: Date.now(),
-      type: this.warn.name,
-      ...(this.session && { session: this.session }),
-      ...(this.userId && { userId: this.userId }),
-      ...(this.identifier && { identifier: this.identifier }),
-      ...(this.appName && { app: this.appName }),
+      ...this.output(self, origin, message, status || 200),
     });
   }
 
   error(origin: string, error: Error, status?: number, timeEnd = true): void {
     if (this.level < this.LOG_LEVELS.ERROR) return;
+    const self = this.error.name;
     console.error({
-      origin,
-      message: error.message,
-      trace: this.trace,
-      status: status || 500,
-      ts: Date.now(),
-      type: this.error.name,
-      ...(this.session && { session: this.session }),
-      ...(this.userId && { userId: this.userId }),
-      ...(this.identifier && { identifier: this.identifier }),
-      ...(this.appName && { app: this.appName }),
+      ...this.output(self, origin, error.message, status || 500),
     });
     timeEnd && this.timeEnd(`${self} - ${this.trace}`);
   }

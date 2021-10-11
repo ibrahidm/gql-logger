@@ -25,7 +25,7 @@ export default class Logger {
     userId,
     identifier,
   }: {
-    level: number;
+    level?: number;
     appName?: string;
     correlation?: string;
     session?: string;

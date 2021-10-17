@@ -102,7 +102,7 @@ export default class Logger {
     console.error({
       ...this.output(self, origin, error.message, status || 500),
     });
-    timeEnd && this.timeEnd(`${self} - ${this.trace}`);
+    timeEnd && this.timeEnd(`${origin} - ${this.trace}`);
   }
 
   private time(label: string): void {

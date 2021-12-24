@@ -4,10 +4,15 @@ export default class Logger {
   readonly appName?: string;
   readonly level: number;
   readonly trace: string;
-  readonly correlation?: string | undefined;
+  readonly correlation?: string;
   readonly session?: string;
   readonly userId?: string;
   readonly identifier?: string;
+  readonly listMode: boolean;
+  readonly list: string[];
+  readonly stack: string[];
+  readonly tsMap: Record<string, number>;
+  traceStart: number;
 
   private LOG_LEVELS = {
     OFF: 0,
@@ -24,6 +29,7 @@ export default class Logger {
     session,
     userId,
     identifier,
+    listMode = false,
   }: {
     level?: number;
     appName?: string;
@@ -31,6 +37,7 @@ export default class Logger {
     session?: string;
     userId?: string;
     identifier?: string;
+    listMode?: boolean;
   }) {
     this.appName = appName;
     this.level = process.env.LOG_LEVEL
@@ -40,6 +47,11 @@ export default class Logger {
     this.session = session;
     this.userId = userId;
     this.identifier = identifier;
+    this.listMode = listMode;
+    this.list = [];
+    this.stack = [];
+    this.tsMap = {};
+    this.traceStart = Date.now();
   }
 
   private output(
@@ -63,13 +75,29 @@ export default class Logger {
   }
 
   start(self: string, status?: number): void {
-    this.info(self, `${self} called`, status);
-    this.time(`${self} - ${this.trace}`);
+    if (this.listMode) {
+      const ts = Date.now();
+      this.tsMap[self] = ts;
+      this.list.push(`${self} - ${ts}`);
+      this.stack.push(self);
+    } else {
+      this.time(`${self} - ${this.trace}`);
+      this.info(self, `${self} called`, status);
+    }
   }
 
   end(self: string, status?: number): void {
-    this.info(self, `${self} invoked successfully`, status);
-    this.timeEnd(`${self} - ${this.trace}`);
+    this.stack.pop();
+    if (this.listMode && !this.stack.length)
+      console.log(
+        `${this.trace} =>`,
+        this.list,
+        ` - ${Date.now() - this.traceStart}ms`
+      );
+    if (!this.listMode) {
+      this.info(self, `${self} invoked successfully`, status);
+      this.timeEnd(`${self} - ${this.trace}`);
+    }
   }
 
   debug(origin: string, message: string, status?: number): void {
@@ -98,11 +126,24 @@ export default class Logger {
 
   error(origin: string, error: Error, status?: number, timeEnd = true): void {
     if (this.level < this.LOG_LEVELS.ERROR) return;
-    const self = this.error.name;
-    console.error({
-      ...this.output(self, origin, error.message, status || 500),
-    });
-    timeEnd && this.timeEnd(`${origin} - ${this.trace}`);
+    if (this.listMode) {
+      this.stack.pop();
+      const label = `Error: ${this.list.pop()} - ${error.message}`;
+      this.list.push(label);
+      if (!this.stack.length) {
+        console.log(
+          `${this.trace} =>`,
+          this.list,
+          ` - ${Date.now() - this.traceStart}ms`
+        );
+      }
+    } else {
+      const self = this.error.name;
+      console.error({
+        ...this.output(self, origin, error.message, status || 500),
+      });
+      timeEnd && this.timeEnd(`${origin} - ${this.trace}`);
+    }
   }
 
   private time(label: string): void {

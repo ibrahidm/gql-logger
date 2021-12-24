@@ -26,6 +26,7 @@
     - [warn()](#warn)
       - [Arguments](#arguments-5)
       - [Output](#output-5)
+  - [List Mode](#list-mode)
   - [Usage](#usage)
   - [Contribute](#contribute)
   - [Support](#support)
@@ -41,21 +42,8 @@ $ npm install gql-logger
 ```
 ## Getting Started
 
-**gql-logger** was designed for easy set-up with [apollo-server-express](https://www.npmjs.com/package/apollo-server-express).  It accepts the following arguments: 
+**gql-logger** was designed for easy set-up with [apollo-server-express](https://www.npmjs.com/package/apollo-server-express). 
 
-* **`level: number?`** - this allows for control over which types of logs will be produced between different environments. Options are: `0: OFF`, `1: ERROR`, `2: INFO`, `3: WARN`, `4: DEBUG`.  **gql-logger** will first attempt to set the log level by checking for `process.env.LOG_LEVEL`. If the application does not use [dotenv](https://www.npmjs.com/package/dotenv), the default value is `4`. The lower the value, the more conservative the logging. For example, setting `level` as `3` will cause the logger to ignore all `logger.debug()` calls. Setting a number less than `0` or greater than `4` will produce the same behaviour as though the level was set to `0` and `4` respectively. 
-
-* **`appName: string?`** -  you can set the name of the application calling the logger. If not specified, the `app` field will not appear in the log output. This field is especially useful if your application logs dump to a common aggregator across our various applications
-
-* **`correlation: string?`** - this field is used to compose the `trace` output value. It requires that the `x-correlation-id` header be set for client requests. If not `undefined`, it will default to `UNSET` to help you distinguish between the absence of the `x-correlation-id` header and other possible errors. 
-
-* **`session: string?`** - can be used to store session IDs if using session-based authentication. If not set, the `session` field will not appear in the log output. 
-
-* **`userId: string?`** - can be used to store a user ID. If not set, the `userId` field will not appear in the log output. 
-
-* **`identifier: string?`** - can be used to store any other identifier appropriate to your application. If not set, the `identifier` field will not appear in the log output. 
-
-### Set-up With Apollo-Server Express
 
 ``` javascript
 import { Logger } from 'gql-logger'
@@ -77,6 +65,18 @@ const server = new ApolloServer({
 	...//
 });
 ```
+
+## Arguments
+| Name                   | Default     | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `level: number?`       | 4           | This allows for control over which types of logs will be produced between different environments. Options are: `0: OFF`, `1: ERROR`, `2: INFO`, `3: WARN`, `4: DEBUG`.  **gql-logger** will first attempt to set the log level by checking for `process.env.LOG_LEVEL`. If the application does not use [dotenv](https://www.npmjs.com/package/dotenv), it reverts to the default value. The lower the value, the more conservative the logging. For example, setting `level` as `3` will cause the logger to ignore all `logger.debug()` calls. Setting a number less than `0` or greater than `4` will produce the same behaviour as though the level was set to `0` and `4` respectively. |
+| `appName: string?`     | `undefined` | You can set the name of the application calling the logger. If not specified, the `app` field will not appear in the log output. This field is especially useful when utilizing a log aggregator across various applications.                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `correlation: string?` | `undefined` | This field is used to compose the `trace` output value. It requires that the `x-correlation-id` header be set for client requests. If `undefined`, it will substitute `UNSET` where the `x-correlation-id` would usually appear.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `session: string?`     | `undefined` | This argument can be used to store session IDs if using session-based authentication. If not set, the `session` field will not appear in the log output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `userId: string?`      | `undefined` | This argument can be used to store a user ID. If not set, the `userId` field will not appear in the log output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `identifier: string?`  | `undefined` | This can be used to store any other identifier appropriate to your application. If not set, the `identifier` field will not appear in the log output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `listMode`             | `false`     | Setting this flag to `true` modifies the logger output to a condensed, readable pseudo stack-trace for an alternative logging style. See below for example outpus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+
 
 ## API
 The following methods are available: 
@@ -114,7 +114,7 @@ The main method used to end the log for a given function. Internally `end()` cal
 * `self: string`
 * `status: number?`
 
-#### Output
+#### Output (`listMode === flase`)
 ``` javascript
 {
   origin: 'someResolver',
@@ -207,6 +207,16 @@ getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 	session: 'some-session-id',
 	app: 'anApp'
 }
+```
+## List Mode
+If you set `listMode` to `true`, you do not have to change any other code. Be aware the in place of the outputs for `start()` and `end()`, the logger will output a single log to the console with the following format:
+```javascript
+<some-trace-id> => [
+	'<some-function> - <some-timestamp>',
+	'<some-function> - <some-timestamp>',
+	'Error: <some-function> - <some-timestamp> - <error-message>', 
+	...
+] - 7ms
 ```
 
 ## Usage

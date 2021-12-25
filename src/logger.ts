@@ -1,4 +1,11 @@
 import uid from 'uniqid';
+import { Console } from 'console';
+
+const logger = new Console({
+  stdout: process.stdout,
+  groupIndentation: 6,
+  stderr: process.stderr,
+});
 
 export default class Logger {
   readonly appName?: string;
@@ -12,6 +19,7 @@ export default class Logger {
   readonly list: string[];
   readonly stack: string[];
   readonly tsMap: Record<string, number>;
+  readonly cascade: boolean;
   traceStart: number;
 
   private LOG_LEVELS = {
@@ -30,6 +38,7 @@ export default class Logger {
     userId,
     identifier,
     listMode = false,
+    cascade = true,
   }: {
     level?: number;
     appName?: string;
@@ -38,6 +47,7 @@ export default class Logger {
     userId?: string;
     identifier?: string;
     listMode?: boolean;
+    cascade?: boolean;
   }) {
     this.appName = appName;
     this.level = process.env.LOG_LEVEL
@@ -51,6 +61,7 @@ export default class Logger {
     this.list = [];
     this.stack = [];
     this.tsMap = {};
+    this.cascade = cascade;
     this.traceStart = Date.now();
   }
 
@@ -75,35 +86,40 @@ export default class Logger {
   }
 
   start(self: string, status?: number): void {
+    this.stack.push(self);
     if (this.listMode) {
       const ts = Date.now();
       this.tsMap[self] = ts;
       this.list.push(`${self} - ${ts}`);
-      this.stack.push(self);
     } else {
       this.time(`${self} - ${this.trace}`);
       this.info(self, `${self} called`, status);
+      this.cascade && logger.groupCollapsed();
     }
   }
 
   end(self: string, status?: number): void {
     this.stack.pop();
-    if (this.listMode && !this.stack.length)
-      console.log(
-        `${this.trace} =>`,
+    if (this.listMode && !this.stack.length) {
+      logger.groupCollapsed();
+      logger.log(
+        `\n${this.trace} =>`,
         this.list,
-        ` - ${Date.now() - this.traceStart}ms`
+        ` - ${Date.now() - this.traceStart}ms\n`
       );
-    if (!this.listMode) {
+      logger.groupEnd();
+    } else if (!this.listMode) {
+      this.cascade && logger.groupEnd();
       this.info(self, `${self} invoked successfully`, status);
       this.timeEnd(`${self} - ${this.trace}`);
+      if (!this.stack.length) logger.log('\n');
     }
   }
 
   debug(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.DEBUG) return;
     const self = this.debug.name;
-    console.debug({
+    logger.debug({
       ...this.output(self, origin, message, status || 200),
     });
   }
@@ -111,7 +127,7 @@ export default class Logger {
   info(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.INFO) return;
     const self = this.info.name;
-    console.info({
+    logger.info({
       ...this.output(self, origin, message, status || 200),
     });
   }
@@ -119,7 +135,7 @@ export default class Logger {
   warn(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.WARN) return;
     const self = this.warn.name;
-    console.warn({
+    logger.warn({
       ...this.output(self, origin, message, status || 200),
     });
   }
@@ -131,7 +147,7 @@ export default class Logger {
       const label = `Error: ${this.list.pop()} - ${error.message}`;
       this.list.push(label);
       if (!this.stack.length) {
-        console.log(
+        logger.log(
           `${this.trace} =>`,
           this.list,
           ` - ${Date.now() - this.traceStart}ms`
@@ -139,7 +155,7 @@ export default class Logger {
       }
     } else {
       const self = this.error.name;
-      console.error({
+      logger.error({
         ...this.output(self, origin, error.message, status || 500),
       });
       timeEnd && this.timeEnd(`${origin} - ${this.trace}`);
@@ -147,10 +163,10 @@ export default class Logger {
   }
 
   private time(label: string): void {
-    console.time(label);
+    logger.time(label);
   }
 
   private timeEnd(label: string): void {
-    console.timeEnd(label);
+    logger.timeEnd(label);
   }
 }

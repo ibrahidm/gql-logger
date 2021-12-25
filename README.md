@@ -75,7 +75,8 @@ const server = new ApolloServer({
 | `session: string?`     | `undefined` | This argument can be used to store session IDs if using session-based authentication. If not set, the `session` field will not appear in the log output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `userId: string?`      | `undefined` | This argument can be used to store a user ID. If not set, the `userId` field will not appear in the log output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `identifier: string?`  | `undefined` | This can be used to store any other identifier appropriate to your application. If not set, the `identifier` field will not appear in the log output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `listMode`             | `false`     | Setting this flag to `true` modifies the logger output to a condensed, readable pseudo stack-trace for an alternative logging style. See below for example outpus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `listMode: boolean?`   | `false`     | Setting this flag to `true` modifies the logger output to a condensed, readable pseudo stack-trace for an alternative logging style. See below for example outpus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `cascade: boolean?`    | `true`      | By default logs corresponding to functions within functions are grouped by indent, creating a cascading effect for easier readibility. This feature can be toggled off by passing `false`. Note that this will not affect the `listMode` default indentation.                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 
 ## API
@@ -114,7 +115,7 @@ The main method used to end the log for a given function. Internally `end()` cal
 * `self: string`
 * `status: number?`
 
-#### Output (`listMode === flase`)
+#### Output (`listMode === false`)
 ``` javascript
 {
   origin: 'someResolver',
@@ -218,7 +219,7 @@ If you set `listMode` to `true`, you do not have to change any other code. Be aw
 	...
 ] - 7ms
 ```
-
+The major disadvantage of list mode is that other logs to the console will not be sandwiched between the start and end logs corresponding to thier caller.
 ## Usage
 Here is an example of where / how these methods are intended to be called from within a GraphQL resolver: 
 

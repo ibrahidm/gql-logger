@@ -147,10 +147,11 @@ export default class Logger {
       const label = `Error: ${this.list.pop()} - ${error.message}`;
       this.list.push(label);
       if (!this.stack.length) {
+        logger.groupCollapsed();
         logger.log(
           `${this.trace} =>`,
           this.list,
-          ` - ${Date.now() - this.traceStart}ms`
+          ` - ${Date.now() - this.traceStart}ms\n`
         );
       }
     } else {

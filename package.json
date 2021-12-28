@@ -1,6 +1,6 @@
 {
   "name": "gql-logger",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A lightweight logger with built-in traceability intended to be integrated with the GraphQL context argument.",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",

@@ -149,10 +149,11 @@ export default class Logger {
       if (!this.stack.length) {
         logger.groupCollapsed();
         logger.log(
-          `${this.trace} =>`,
+          `\n${this.trace} =>`,
           this.list,
           ` - ${Date.now() - this.traceStart}ms\n`
         );
+        logger.groupEnd();
       }
     } else {
       const self = this.error.name;

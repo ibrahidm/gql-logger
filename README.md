@@ -2,34 +2,25 @@
 **gql-logger** is a simple class-based logger designed to integrate with the graphql context argument. It provides traceability, basic logging, and console-based performance snapshots for production and development environments. 
 
 **gql-logger** is built using typescript and ships with type support. It is configured to allow for easy implementation both with commonJS and ES6.
-
-## Table of Contents
-  - [Installation](#installation)
-  - [Getting Started](#getting-started)
-    - [Set-up With Apollo-Server Express](#set-up-with-apollo-server-express)
-  - [API](#api)
-    - [start()](#start)
-      - [Arguments](#arguments)
-      - [Output](#output)
-    - [end()](#end)
-      - [Arguments](#arguments-1)
-      - [Output](#output-1)
-    - [error()](#error)
-      - [Arguments](#arguments-2)
-      - [Output](#output-2)
-    - [debug()](#debug)
-      - [Arguments](#arguments-3)
-      - [Output](#output-3)
-    - [info()](#info)
-      - [Arguments](#arguments-4)
-      - [Output](#output-4)
-    - [warn()](#warn)
-      - [Arguments](#arguments-5)
-      - [Output](#output-5)
-  - [List Mode](#list-mode)
-  - [Usage](#usage)
-  - [Contribute](#contribute)
-  - [Support](#support)
+- [gql-logger](#gql-logger)
+	- [Installation](#installation)
+	- [Getting Started](#getting-started)
+	- [Class: Logger](#class-logger)
+		- [Arguments](#arguments)
+		- [API](#api)
+			- [start()](#start)
+			- [end()](#end)
+			- [error()](#error)
+			- [debug()](#debug)
+			- [info()](#info)
+			- [warn()](#warn)
+			- [refreshInstance()](#refreshinstance)
+	- [Decorator: Log](#decorator-log)
+		- [Usage Example](#usage-example)
+	- [List Mode](#list-mode)
+	- [Usage](#usage)
+	- [Contribute](#contribute)
+	- [Support](#support)
 
 ## Installation 
 Using  **yarn**:
@@ -46,27 +37,34 @@ $ npm install gql-logger
 
 
 ``` javascript
-import { Logger } from 'gql-logger'
+import Logger from 'gql-logger'
+
+const logger = new Logger({
+		// level defaults to 4 or `process.env.LOG_LEVEL` value
+		appName: 'example-app',
+	})
 
 const server = new ApolloServer({
 	resolvers: ... //,
 	plugins: ... //,
 	context: async ({ req }) => {
 		const { headers, sessionID } = req;
+
+		logger.refreshInstance({
+			correlation: headers['x-correlation-id'],
+			session: sessionID,
+		})
+
 		return {
-			logger: new Logger({
-				// level defaults to 4 or `process.env.LOG_LEVEL` value
-				appName: 'example-app',
-				correlation: headers['x-correlation-id'],
-				session: sessionID,
-			}),
+			logger
 		};
 	},
 	...//
 });
 ```
 
-## Arguments
+## Class: Logger
+### Arguments
 | Name                   | Default     | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `level: number?`       | 4           | This allows for control over which types of logs will be produced between different environments. Options are: `0: OFF`, `1: ERROR`, `2: INFO`, `3: WARN`, `4: DEBUG`.  **gql-logger** will first attempt to set the log level by checking for `process.env.LOG_LEVEL`. If the application does not use [dotenv](https://www.npmjs.com/package/dotenv), it reverts to the default value. The lower the value, the more conservative the logging. For example, setting `level` as `3` will cause the logger to ignore all `logger.debug()` calls. Setting a number less than `0` or greater than `4` will produce the same behaviour as though the level was set to `0` and `4` respectively. |
@@ -79,7 +77,7 @@ const server = new ApolloServer({
 | `cascade: boolean?`    | `true`      | By default logs corresponding to functions within functions are grouped by indent, creating a cascading effect for easier readibility. This feature can be toggled off by passing `false`. Note that this will not affect the `listMode` default indentation.                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 
-## API
+### API
 The following methods are available: 
 * [`Logger.prototype.start()`](#start)
 * [`Logger.prototype.end()`](#end)
@@ -88,13 +86,13 @@ The following methods are available:
 * [`Logger.prototype.info()`](#info)
 * [`Logger.protoype.warn()`](#warn)
 
-### start()
+#### start()
 The main method used when initiating logging for a given function. Internally `start()` calls `info` and starts a timer.
-#### Arguments
+**Arguments**
 * `self: string`
 * `status: number?`
 
-#### Output
+**Output**
 ``` javascript
 {
   origin: 'someResolver',
@@ -108,14 +106,14 @@ The main method used when initiating logging for a given function. Internally `s
 }
 ```
 ***
-### end()
+#### end()
 The main method used to end the log for a given function. Internally `end()` calls `info` and ends a timer. 
 
-#### Arguments
+**Arguments**
 * `self: string`
 * `status: number?`
 
-#### Output (`listMode === false`)
+**Output (`listMode === false`)**
 ``` javascript
 {
   origin: 'someResolver',
@@ -130,15 +128,16 @@ The main method used to end the log for a given function. Internally `end()` cal
 getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 ```
 ***
-### error()
+#### error()
 The main method used to handle and log errors. The intention is that this method is used in conjunction with [Logger.prototype.start()](#start) in order to benchmark time-to-error. If the method is being used independently of the `start` method, you can pass the the value `false` for the optional 4th argument `timeEnd`. 
-#### Arguments
+
+**Arguments**
 * `self: string`
 * `error: Error`
 * `status: number?`
 * `timeEnd: boolean (default = true)`
 
-#### Output
+**Output**
 ``` javascript
 {
 	origin: 'someResolver',
@@ -153,12 +152,14 @@ The main method used to handle and log errors. The intention is that this method
 getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 ```
 ***
-### debug()
-#### Arguments
+#### debug()
+
+**Arguments**
 * `origin: string`
 * `message: string`
 * `status: number?`
-#### Output
+
+**Output**
 ``` javascript
 {
 	origin: 'someResolver',
@@ -172,12 +173,13 @@ getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 }
 ```
 ***
-### info()
-#### Arguments
+#### info()
+**Arguments**
 * `origin: string`
 * `message: string`
 * `status: number?`
-#### Output
+  
+**Output**
 ``` javascript
 {
 	origin: 'someResolver',
@@ -191,12 +193,14 @@ getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 }
 ```
 ***
-### warn()
-#### Arguments
+#### warn()
+
+**Arguments**
 * `origin: string`
 * `message: string`
 * `status: number?`
-#### Output
+  
+**Output**
 ``` javascript
 {
 	origin: 'someResolver',
@@ -209,6 +213,41 @@ getCreditsIssuedGraph - UNSET-sktwieu0kukgnkwi: 18.665ms
 	app: 'anApp'
 }
 ```
+***
+#### refreshInstance()
+
+**Arguments**
+* `correlation?: string`
+* `session?: string`
+* `userId?: string`
+* `identifier?: string`
+
+**Description**
+This function can be called within context creation to allow for logging through the course of a new request without having to re-instantiate the logger. This allows for the instance to be defined once, separately from context creation, while still maintaining request-specific state. 
+***
+
+## Decorator: Log
+The `Log` decorator provides out-of-the-box logging without having to reimplement boiler-plate logging functionality for every eligible function. It is more geared towards business-logic rather than GraphQL resolvers themselves. This is because tools like `TypeGraphQL` ship with their own special methods that are required to make comatible decorators, and providing compatibility with such tools is beyond the scope of this package.
+
+### Usage Example
+
+```typescript
+import { Log } from 'gql-logger';
+
+class AuthHelper {
+	@Log()
+	async helpGenerateOTP() {
+		const password = // some logic ;
+
+		return `${password}`;
+	}
+}
+```
+This simple function would yield the following output in [List Mode](#list-mode): 
+```javascript
+<SOME_TRACE> => [ 'helpGenerateOTP - 1641875087166' ]  - 22ms
+```
+This clearly saves a lot of code when compared to the example shown in the [Usage](#usage) section.
 ## List Mode
 If you set `listMode` to `true`, you do not have to change any other code. Be aware the in place of the outputs for `start()` and `end()`, the logger will output a single log to the console with the following format:
 ```javascript
@@ -219,7 +258,7 @@ If you set `listMode` to `true`, you do not have to change any other code. Be aw
 	...
 ] - 7ms
 ```
-The major disadvantage of list mode is that other logs to the console will not be sandwiched between the start and end logs corresponding to thier caller.
+The major disadvantage of list mode is that other logs to the console will not be sandwiched between the start and end logs corresponding to thier caller (i.e. you see the order in which functions are called, but not necessarily the scope where they are called).
 ## Usage
 Here is an example of where / how these methods are intended to be called from within a GraphQL resolver: 
 

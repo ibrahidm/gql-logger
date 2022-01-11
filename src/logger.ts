@@ -1,5 +1,7 @@
 import uid from 'uniqid';
 import { Console } from 'console';
+import { ILoggerInput } from './interfaces';
+import emitter from './emitter';
 
 const logger = new Console({
   stdout: process.stdout,
@@ -9,19 +11,20 @@ const logger = new Console({
 
 export default class Logger {
   readonly appName?: string;
-  readonly level: number;
-  readonly trace: string;
-  readonly correlation?: string;
-  readonly session?: string;
-  readonly userId?: string;
-  readonly identifier?: string;
-  readonly listMode: boolean;
-  readonly list: string[];
-  readonly stack: string[];
-  readonly tsMap: Record<string, number>;
   readonly cascade: boolean;
-  traceStart: number;
+  readonly level: number;
+  readonly listMode: boolean;
 
+  correlation?: string;
+  identifier?: string;
+  session?: string;
+  trace: string;
+  traceStart: number;
+  userId?: string;
+
+  private list: string[] = [];
+  private stack: string[] = [];
+  private tsMap: Record<string, number> = {};
   private LOG_LEVELS = {
     OFF: 0,
     ERROR: 1,
@@ -39,30 +42,19 @@ export default class Logger {
     identifier,
     listMode = false,
     cascade = true,
-  }: {
-    level?: number;
-    appName?: string;
-    correlation?: string;
-    session?: string;
-    userId?: string;
-    identifier?: string;
-    listMode?: boolean;
-    cascade?: boolean;
-  }) {
+  }: ILoggerInput) {
     this.appName = appName;
     this.level = process.env.LOG_LEVEL
       ? parseInt(process.env.LOG_LEVEL)
       : level;
-    this.trace = `${correlation ? correlation : 'UNSET'}-${uid()}`;
+    this.correlation = correlation;
     this.session = session;
     this.userId = userId;
     this.identifier = identifier;
     this.listMode = listMode;
-    this.list = [];
-    this.stack = [];
-    this.tsMap = {};
     this.cascade = cascade;
     this.traceStart = Date.now();
+    this.trace = this.setTrace();
   }
 
   private output(
@@ -85,6 +77,33 @@ export default class Logger {
     };
   }
 
+  refreshInstance({
+    correlation,
+    session,
+    userId,
+    identifier,
+  }: {
+    correlation?: string;
+    session?: string;
+    userId?: string;
+    identifier?: string;
+  }) {
+    session && (this.session = session);
+    userId && (this.userId = userId);
+    identifier && (this.identifier = identifier);
+    correlation && (this.correlation = correlation);
+    this.trace = this.setTrace();
+    this.list = [];
+    this.stack = [];
+    this.tsMap = {};
+    this.traceStart = Date.now();
+    emitter.emit('instanceRefreshed', this);
+  }
+
+  private setTrace() {
+    return `${this.correlation ? this.correlation : 'UNSET'}-${uid()}`;
+  }
+
   start(self: string, status?: number): void {
     this.stack.push(self);
     if (this.listMode) {
@@ -100,15 +119,8 @@ export default class Logger {
 
   end(self: string, status?: number): void {
     this.stack.pop();
-    if (this.listMode && !this.stack.length) {
-      logger.groupCollapsed();
-      logger.log(
-        `\n${this.trace} =>`,
-        this.list,
-        ` - ${Date.now() - this.traceStart}ms\n`
-      );
-      logger.groupEnd();
-    } else if (!this.listMode) {
+    if (this.listMode && !this.stack.length) this.listModeOutput();
+    else if (!this.listMode) {
       this.cascade && logger.groupEnd();
       this.info(self, `${self} invoked successfully`, status);
       this.timeEnd(`${self} - ${this.trace}`);
@@ -146,15 +158,7 @@ export default class Logger {
       this.stack.pop();
       const label = `Error: ${this.list.pop()} - ${error.message}`;
       this.list.push(label);
-      if (!this.stack.length) {
-        logger.groupCollapsed();
-        logger.log(
-          `\n${this.trace} =>`,
-          this.list,
-          ` - ${Date.now() - this.traceStart}ms\n`
-        );
-        logger.groupEnd();
-      }
+      if (!this.stack.length) this.listModeOutput();
     } else {
       const self = this.error.name;
       logger.error({
@@ -170,5 +174,17 @@ export default class Logger {
 
   private timeEnd(label: string): void {
     logger.timeEnd(label);
+  }
+
+  private listModeOutput(): void {
+    logger.groupCollapsed();
+    logger.log(
+      `\n${this.trace} =>`,
+      this.list,
+      ` - ${Date.now() - this.traceStart}ms\n`
+    );
+    logger.groupEnd();
+    this.list = [];
+    this.tsMap = {};
   }
 }

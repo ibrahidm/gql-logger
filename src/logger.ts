@@ -42,6 +42,7 @@ export default class Logger {
     identifier,
     listMode = false,
     cascade = true,
+    decoratorCount = 10,
   }: ILoggerInput) {
     this.appName = appName;
     this.level = process.env.LOG_LEVEL
@@ -55,6 +56,7 @@ export default class Logger {
     this.cascade = cascade;
     this.traceStart = Date.now();
     this.trace = this.setTrace();
+    emitter.setMaxListeners(decoratorCount);
   }
 
   private output(

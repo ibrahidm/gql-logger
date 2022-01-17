@@ -7,4 +7,5 @@ export interface ILoggerInput {
   identifier?: string;
   listMode?: boolean;
   cascade?: boolean;
+  decoratorCount?: number;
 }

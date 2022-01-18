@@ -8,18 +8,18 @@ const Log = () => {
   });
 
   return (
-    _target: any,
+    _target: Object,
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) => {
-    const original = descriptor.value;
-    descriptor.value = async (args: any) => {
+    const original: Function = descriptor.value;
+    descriptor.value = async function (args: any) {
       const self = propertyKey;
       logger.start(self);
 
       let res;
       try {
-        res = await original({ ...args });
+        res = await original.call(this, args);
       } catch (e: any) {
         logger.error(self, e);
         throw e;

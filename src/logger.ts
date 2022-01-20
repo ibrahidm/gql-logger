@@ -1,19 +1,14 @@
 import uid from 'uniqid';
-import { Console } from 'console';
-import { ILoggerInput } from './interfaces';
+import { ILoggerInput, mode } from './interfaces';
 import emitter from './emitter';
-
-const logger = new Console({
-  stdout: process.stdout,
-  groupIndentation: 6,
-  stderr: process.stderr,
-});
+import iconsole from './iconsole';
+import QueueLogger from './loggers/queueLogger';
+import ListLogger from './loggers/listLogger';
+import CascadeLogger from './loggers/cascadeLogger';
 
 export default class Logger {
   readonly appName?: string;
-  readonly cascade: boolean;
   readonly level: number;
-  readonly listMode: boolean;
 
   correlation?: string;
   identifier?: string;
@@ -21,10 +16,9 @@ export default class Logger {
   trace: string;
   traceStart: number;
   userId?: string;
+  mode: mode;
+  logger: QueueLogger | ListLogger | CascadeLogger;
 
-  private list: string[] = [];
-  private stack: string[] = [];
-  private tsMap: Record<string, number> = {};
   private LOG_LEVELS = {
     OFF: 0,
     ERROR: 1,
@@ -40,9 +34,8 @@ export default class Logger {
     session,
     userId,
     identifier,
-    listMode = false,
-    cascade = true,
     decoratorCount = 10,
+    mode = 'queue',
   }: ILoggerInput) {
     this.appName = appName;
     this.level = process.env.LOG_LEVEL
@@ -52,11 +45,29 @@ export default class Logger {
     this.session = session;
     this.userId = userId;
     this.identifier = identifier;
-    this.listMode = listMode;
-    this.cascade = cascade;
     this.traceStart = Date.now();
     this.trace = this.setTrace();
+    this.mode = mode;
+    this.logger = this.setLogger();
     emitter.setMaxListeners(decoratorCount);
+  }
+
+  private setLogger() {
+    switch (this.mode) {
+      case 'queue':
+        return new QueueLogger(this.trace);
+      case 'list':
+        return new ListLogger(this.trace);
+      case 'cascade':
+        return new CascadeLogger({
+          appName: this.appName,
+          correlation: this.correlation,
+          session: this.session,
+          userId: this.userId,
+          identifier: this.identifier,
+          trace: this.trace,
+        });
+    }
   }
 
   private output(
@@ -95,9 +106,6 @@ export default class Logger {
     identifier && (this.identifier = identifier);
     correlation && (this.correlation = correlation);
     this.trace = this.setTrace();
-    this.list = [];
-    this.stack = [];
-    this.tsMap = {};
     this.traceStart = Date.now();
     emitter.emit('instanceRefreshed', this);
   }
@@ -107,33 +115,27 @@ export default class Logger {
   }
 
   start(self: string, status?: number): void {
-    this.stack.push(self);
-    if (this.listMode) {
-      const ts = Date.now();
-      this.tsMap[self] = ts;
-      this.list.push(`${self} - ${ts}`);
-    } else {
-      this.time(`${self} - ${this.trace}`);
-      this.info(self, `${self} called`, status);
-      this.cascade && logger.groupCollapsed();
-    }
+    if (this.level === 0) return;
+    const trace = this.trace;
+    const traceStart = this.traceStart;
+    const ts = Date.now();
+    this.logger.startLog({ self, ts, trace, traceStart, status });
   }
 
   end(self: string, status?: number): void {
-    this.stack.pop();
-    if (this.listMode && !this.stack.length) this.listModeOutput();
-    else if (!this.listMode) {
-      this.cascade && logger.groupEnd();
-      this.info(self, `${self} invoked successfully`, status);
-      this.timeEnd(`${self} - ${this.trace}`);
-      if (!this.stack.length) logger.log('\n');
-    }
+    if (this.level === 0) return;
+    this.logger.endLog(self, status);
+  }
+
+  error(origin: string, error: Error, status?: number): void {
+    if (this.level === 0) return;
+    this.logger.errorLog(origin, error, status);
   }
 
   debug(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.DEBUG) return;
     const self = this.debug.name;
-    logger.debug({
+    iconsole.debug({
       ...this.output(self, origin, message, status || 200),
     });
   }
@@ -141,7 +143,7 @@ export default class Logger {
   info(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.INFO) return;
     const self = this.info.name;
-    logger.info({
+    iconsole.info({
       ...this.output(self, origin, message, status || 200),
     });
   }
@@ -149,44 +151,8 @@ export default class Logger {
   warn(origin: string, message: string, status?: number): void {
     if (this.level < this.LOG_LEVELS.WARN) return;
     const self = this.warn.name;
-    logger.warn({
+    iconsole.warn({
       ...this.output(self, origin, message, status || 200),
     });
-  }
-
-  error(origin: string, error: Error, status?: number, timeEnd = true): void {
-    if (this.level < this.LOG_LEVELS.ERROR) return;
-    if (this.listMode) {
-      this.stack.pop();
-      const label = `Error: ${this.list.pop()} - ${error.message}`;
-      this.list.push(label);
-      if (!this.stack.length) this.listModeOutput();
-    } else {
-      const self = this.error.name;
-      logger.error({
-        ...this.output(self, origin, error.message, status || 500),
-      });
-      timeEnd && this.timeEnd(`${origin} - ${this.trace}`);
-    }
-  }
-
-  private time(label: string): void {
-    logger.time(label);
-  }
-
-  private timeEnd(label: string): void {
-    logger.timeEnd(label);
-  }
-
-  private listModeOutput(): void {
-    logger.groupCollapsed();
-    logger.log(
-      `\n${this.trace} =>`,
-      this.list,
-      ` - ${Date.now() - this.traceStart}ms\n`
-    );
-    logger.groupEnd();
-    this.list = [];
-    this.tsMap = {};
   }
 }

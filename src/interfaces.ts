@@ -1,3 +1,5 @@
+export type mode = 'queue' | 'cascade' | 'list';
+
 export interface ILoggerInput {
   level?: number;
   appName?: string;
@@ -5,7 +7,14 @@ export interface ILoggerInput {
   session?: string;
   userId?: string;
   identifier?: string;
-  listMode?: boolean;
-  cascade?: boolean;
   decoratorCount?: number;
+  mode?: mode;
+}
+
+export interface IStartInput {
+  self: string;
+  ts: number;
+  trace: string;
+  traceStart: number;
+  status?: number;
 }
